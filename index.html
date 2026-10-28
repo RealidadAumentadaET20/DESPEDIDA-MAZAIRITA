@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05070b">
+<title>Mazairita · Despedida</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070b;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  #camera,#three{position:fixed;inset:0;width:100%;height:100%}
+  #camera{object-fit:cover;background:#05070b}
+  #three{pointer-events:none}
+  #status{position:fixed;z-index:5;top:12px;left:12px;right:12px;padding:10px 14px;text-align:center;border-radius:12px;background:rgba(0,0,0,.66);border:1px solid rgba(255,255,255,.18);font-size:14px;line-height:1.35}
+  #soundGate{position:fixed;z-index:10;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(3,6,12,.82);text-align:center}
+  #panel{max-width:420px;padding:24px;border-radius:20px;background:rgba(20,25,36,.96);border:1px solid rgba(255,255,255,.16);box-shadow:0 20px 70px #0008}
+  h1{font-size:25px;margin:0 0 10px}
+  p{font-size:15px;line-height:1.5;color:#e5e7eb}
+  button{border:0;border-radius:999px;padding:14px 24px;font-size:16px;font-weight:750;background:#66e3ff;color:#07131b;cursor:pointer}
+  #end{position:fixed;z-index:4;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:28px;background:rgba(0,0,0,.42);pointer-events:none}
+  #endCard{max-width:560px;padding:24px;border-radius:22px;background:rgba(0,0,0,.58);border:1px solid #ffffff40;backdrop-filter:blur(6px)}
+  #end h2{font-size:clamp(28px,7vw,48px);margin:0 0 8px}
+  #end p{margin:0;font-size:clamp(15px,3.5vw,19px)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+  <!-- La cámara se solicita al cargar la página. El navegador pedirá permiso. -->
+  <video id="camera" playsinline autoplay muted></video>
+  <canvas id="three"></canvas>
+  <div id="status" role="status">Preparando la despedida de Mazairita…</div>
+
+  <!-- Los navegadores móviles pueden bloquear el audio automático. Este panel solo aparece si hace falta un toque. -->
+  <div id="soundGate">
+    <div id="panel">
+      <h1>¡Una última cosa!</h1>
+      <p>Tu navegador bloqueó el sonido automático. Tocá una vez para activar el audio y continuar la despedida.</p>
+      <button id="enableSound">Activar sonido</button>
+    </div>
+  </div>
+
+  <div id="end">
+    <div id="endCard">
+      <h2>¡Hasta la próxima!</h2>
+      <p>Gracias por recorrer Producción Multimedial con Mazairita.</p>
+    </div>
+  </div>
+
+  <video id="farewellVideo" playsinline preload="auto" crossorigin="anonymous"></video>
+  <audio id="robotSound" preload="auto"></audio>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+/* ============================================================
+   ARCHIVOS
+   Este ejemplo espera que los materiales estén en la carpeta
+   "assets" de la raíz del repositorio. Si están en la raíz,
+   quitá "assets/" de cada ruta.
+   ============================================================ */
+const ASSETS = {
+  video: './assets/DESPEDIDA MP4.mp4',
+  idleModel: './assets/MAZAIRITA-VERSIÓN-FINAL-ESPERA-UNIFICADO.glb',
+  turnModel: './assets/MAZAIRITA-VERSIÓN-FINAL-GIRO-UNIFICADO.glb',
+  robotSound: './assets/efecto 1 no movimiento.wav'
+};
+
+const cameraVideo = document.querySelector('#camera');
+const farewellVideo = document.querySelector('#farewellVideo');
+const robotSound = document.querySelector('#robotSound');
+const statusEl = document.querySelector('#status');
+const soundGate = document.querySelector('#soundGate');
+const enableSoundBtn = document.querySelector('#enableSound');
+const endScreen = document.querySelector('#end');
+
+const renderer = new THREE.WebGLRenderer({
+  canvas: document.querySelector('#three'),
+  alpha: true,
+  antialias: true,
+  powerPreference: 'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera3D = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.01, 30);
+camera3D.position.set(0, 0, 0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x535a70, 2.1));
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+keyLight.position.set(2, 4, 3);
+scene.add(keyLight);
+
+const stage = new THREE.Group();
+stage.position.set(0, -0.12, -1.15);
+scene.add(stage);
+
+const robotGroup = new THREE.Group();
+robotGroup.position.set(-0.27, -0.02, 0);
+stage.add(robotGroup);
+
+const videoGroup = new THREE.Group();
+videoGroup.position.set(0.31, 0.02, 0);
+stage.add(videoGroup);
+
+const loader = new GLTFLoader();
+const clock = new THREE.Clock();
+
+let idleRoot = null;
+let turnRoot = null;
+let idleMixer = null;
+let turnMixer = null;
+let activeMixer = null;
+let turnStarted = false;
+let ended = false;
+let cameraStream = null;
+let videoTexture = null;
+let videoMesh = null;
+let robotAudioReady = false;
+
+function setStatus(message) { statusEl.textContent = message; }
+
+function configureModel(root, targetHeight = 0.68) {
+  // Centra y escala modelos distintos para que ocupen un tamaño visual parecido.
+  const box = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  root.scale.multiplyScalar(targetHeight / maxDim);
+  root.position.sub(center.multiplyScalar(targetHeight / maxDim));
+}
+
+function makeVideoPlane() {
+  farewellVideo.src = ASSETS.video;
+  farewellVideo.loop = false;
+  farewellVideo.autoplay = false;
+  farewellVideo.controls = false;
+  farewellVideo.playsInline = true;
+  farewellVideo.preload = 'auto';
+  farewellVideo.muted = false;
+  farewellVideo.volume = 1;
+
+  videoTexture = new THREE.VideoTexture(farewellVideo);
+  videoTexture.colorSpace = THREE.SRGBColorSpace;
+  const geometry = new THREE.PlaneGeometry(0.47, 0.84);
+  const material = new THREE.MeshBasicMaterial({
+    map: videoTexture, side: THREE.DoubleSide, transparent: true
+  });
+  videoMesh = new THREE.Mesh(geometry, material);
+  videoGroup.add(videoMesh);
+
+  // Mantiene el último fotograma al terminar: no se pausa ni se reinicia aquí.
+  farewellVideo.addEventListener('ended', () => {
+    farewellVideo.pause();
+    setStatus('Mazairita se despide…');
+  });
+}
+
+function playClip(gltf, root, loop) {
+  if (!gltf.animations || !gltf.animations.length) return null;
+  const mixer = new THREE.AnimationMixer(root);
+  const action = mixer.clipAction(gltf.animations[0]);
+  action.reset();
+  action.enabled = true;
+  action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+  action.clampWhenFinished = !loop;
+  action.play();
+  return mixer;
+}
+
+function showIdle() {
+  if (turnStarted || ended || !idleRoot) return;
+  if (turnRoot) turnRoot.visible = false;
+  idleRoot.visible = true;
+  activeMixer = idleMixer;
+}
+
+function startTurn() {
+  if (turnStarted || ended) return;
+  turnStarted = true;
+  if (idleRoot) idleRoot.visible = false;
+  if (turnRoot) {
+    turnRoot.visible = true;
+    activeMixer = turnMixer;
+    if (turnMixer) {
+      turnMixer.stopAllAction();
+      turnMixer = playClip({animations: turnRoot.userData.animations || []}, turnRoot, false);
+      activeMixer = turnMixer;
+    } else {
+      finishExperience();
+    }
+  } else {
+    finishExperience();
+    return;
+  }
+  setStatus('Mazairita está realizando su despedida…');
+  // Si el archivo no contiene clips de animación, no dejamos la experiencia bloqueada.
+  const duration = turnRoot.userData.duration || 3.5;
+  window.setTimeout(finishExperience, Math.max(1500, duration * 1000 + 250));
+  playRobotSound();
+}
+
+function finishExperience() {
+  if (ended) return;
+  ended = true;
+  if (activeMixer) activeMixer.stopAllAction();
+  endScreen.style.display = 'flex';
+  setStatus('Despedida finalizada');
+}
+
+async function startCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Este navegador no permite acceder a la cámara. Abrí la página con HTTPS en un navegador actualizado.');
+  }
+  cameraStream = await navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+  });
+  cameraVideo.srcObject = cameraStream;
+  await cameraVideo.play();
+}
+
+function playRobotSound() {
+  if (!robotAudioReady) return;
+  robotSound.currentTime = 0;
+  robotSound.play().catch(() => {});
+}
+
+async function attemptAutoplayWithSound() {
+  farewellVideo.muted = false;
+  farewellVideo.volume = 1;
+  try {
+    await farewellVideo.play();
+  } catch (error) {
+    // Políticas de reproducción automática: mostrar una única acción para habilitar sonido.
+    farewellVideo.muted = true;
+    try { await farewellVideo.play(); } catch (_) {}
+    soundGate.style.display = 'flex';
+    setStatus('La experiencia está lista. Activá el sonido para continuar.');
+  }
+}
+
+enableSoundBtn.addEventListener('click', async () => {
+  try {
+    farewellVideo.muted = false;
+    farewellVideo.volume = 1;
+    await farewellVideo.play();
+    robotAudioReady = true;
+    await robotSound.play().catch(() => {});
+    soundGate.style.display = 'none';
+    setStatus('Mazairita se despide…');
+  } catch (error) {
+    setStatus('No se pudo activar el audio. Revisá el volumen y los permisos del navegador.');
+  }
+});
+
+async function loadModels() {
+  const [idleGLTF, turnGLTF] = await Promise.all([
+    loader.loadAsync(ASSETS.idleModel),
+    loader.loadAsync(ASSETS.turnModel)
+  ]);
+
+  idleRoot = idleGLTF.scene;
+  configureModel(idleRoot, 0.68);
+  idleRoot.position.x -= 0.01;
+  robotGroup.add(idleRoot);
+  idleMixer = playClip(idleGLTF, idleRoot, true);
+  idleRoot.userData.animations = idleGLTF.animations;
+
+  turnRoot = turnGLTF.scene;
+  configureModel(turnRoot, 0.68);
+  turnRoot.visible = false;
+  robotGroup.add(turnRoot);
+  turnRoot.userData.animations = turnGLTF.animations;
+  const firstClip = turnGLTF.animations?.[0];
+  turnRoot.userData.duration = firstClip?.duration || 3.5;
+  turnMixer = playClip(turnGLTF, turnRoot, false);
+  if (turnMixer) turnMixer.stopAllAction();
+
+  // Cuando termina el clip de giro, se cierra la experiencia.
+  if (turnMixer) {
+    turnMixer.addEventListener('finished', () => finishExperience());
+  }
+}
+
+function renderLoop() {
+  requestAnimationFrame(renderLoop);
+  const delta = Math.min(clock.getDelta(), 0.05);
+  if (activeMixer) activeMixer.update(delta);
+  renderer.render(scene, camera3D);
+}
+renderLoop();
+
+window.addEventListener('resize', () => {
+  camera3D.aspect = window.innerWidth/window.innerHeight;
+  camera3D.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+});
+
+async function boot() {
+  try {
+    setStatus('Solicitando permiso para la cámara…');
+    await startCamera();
+    setStatus('Cargando a Mazairita y el video de despedida…');
+    makeVideoPlane();
+    await loadModels();
+    showIdle();
+    activeMixer = idleMixer;
+    robotAudioReady = true;
+    setStatus('Despedida en curso');
+    await attemptAutoplayWithSound();
+
+    // El giro se activa automáticamente cuando termina el video.
+    farewellVideo.addEventListener('ended', () => {
+      if (!turnStarted) startTurn();
+    }, { once: true });
+
+    // Si el video no puede cargar o no tiene duración, mostrar un error legible.
+    farewellVideo.addEventListener('error', () => {
+      setStatus('No se pudo cargar DESPEDIDA MP4. Revisá el nombre y la ubicación del archivo.');
+    });
+  } catch (error) {
+    console.error(error);
+    setStatus('No se pudo iniciar: ' + (error?.message || 'revisá las rutas de los archivos'));
+  }
+}
+boot();
+</script>
+</body>
+</html>
