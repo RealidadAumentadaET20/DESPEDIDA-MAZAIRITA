@@ -358,6 +358,40 @@ AFRAME.registerComponent('gyro', {
 });
 
 window.addEventListener('deviceorientation', e => {
+  
+function esperarOrientacion(timeout = 4000) {
+  if (orient.ok) return Promise.resolve(true);
+
+  return new Promise(resolve => {
+    let temporizador;
+
+    function limpiar() {
+      window.removeEventListener(
+        'deviceorientation',
+        comprobarOrientacion
+      );
+      clearTimeout(temporizador);
+    }
+
+    function comprobarOrientacion() {
+      if (orient.ok) {
+        limpiar();
+        resolve(true);
+      }
+    }
+
+    window.addEventListener(
+      'deviceorientation',
+      comprobarOrientacion
+    );
+
+    temporizador = setTimeout(() => {
+      limpiar();
+      resolve(orient.ok);
+    }, timeout);
+  });
+}
+
   if (e.alpha == null && e.beta == null) return;
 
   orient.alpha = e.alpha || 0;
