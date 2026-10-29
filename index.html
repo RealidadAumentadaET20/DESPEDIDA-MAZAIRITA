@@ -171,6 +171,15 @@ if (assets.hasLoaded) { assetsListos = true; } else { assets.addEventListener('l
 revisarCarga();
 
 /* ---- Diagnóstico: avisa si falta algún archivo en el repositorio ---- */
+  (function () {
+  const archivos = ['3er-anio.mp4','aparicion-saludo.glb','espera.glb','giro2.glb','boton-si.png','boton-no.png'];
+  Promise.all(archivos.map(f => fetch(f, { method: 'HEAD' }).then(r => r.ok ? null : f).catch(() => f)))
+    .then(res => {
+      const faltan = res.filter(Boolean);
+      if (faltan.length) {
+        $('estado').textContent = 'Faltan archivos en el repositorio: ' + faltan.join(', ');
+        btnStart.textContent = 'Error de carga';
+      }
 
     });
 })();
