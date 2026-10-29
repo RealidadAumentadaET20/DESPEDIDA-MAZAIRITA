@@ -42,7 +42,6 @@
          cursor="rayOrigin:mouse" raycaster="objects:.clickable; far:5">
 
   <a-assets timeout="120000">
-    <a-asset-item id="glbAparicion" src="aparicion-saludo.glb"></a-asset-item>
     <a-asset-item id="glbEspera"    src="espera.glb"></a-asset-item>
     <a-asset-item id="glbGiro"      src="giro2.glb"></a-asset-item>
   </a-assets>
@@ -56,7 +55,6 @@
   <!-- Cada elemento se coloca por separado (ver colocarFrenteAlTelefono) -->
   <a-video id="video3d" src="#vid" width="0.72" height="0.405" visible="false"></a-video>
 
-  <a-entity id="mAparicion" visible="false" gltf-model="#glbAparicion" clip-player></a-entity>
   <a-entity id="mEspera"    visible="false" gltf-model="#glbEspera"    clip-player></a-entity>
   <a-entity id="mGiro"      visible="false" gltf-model="#glbGiro"      clip-player></a-entity>
 
@@ -64,7 +62,8 @@
 
 <script>
 /* ================== CONFIGURACIÓN ================== */
-const LINK_SI        = "https://docs.google.com/document/d/1g2UB1Tdas4mCC6SRX_setnILhVluAiEfka7CHQfyujU/edit?usp=sharing";
+const LINK_FINAL     = "https://sites.google.com/view/et20de20/especialidades?pli=1&authuser=0";
+const ESPERA_FINAL_MS = 3000;  // espera tras terminar el video antes de redirigir
 const ALTURA_ROBOT_M = 0.55;  // alto del robot en pantalla (metros)
 const GIRAR_ROBOT_Y  = -90;     // si el robot aparece de espaldas, poné 180
 
@@ -147,32 +146,32 @@ document.getElementById('cam3d').setAttribute('gyro', '');
 /* ---- Elementos ---- */
 const $ = id => document.getElementById(id);
 const camVideo = $('cam'), vid = $('vid'), cam3d = $('cam3d');
-const mAp = $('mAparicion'), mEs = $('mEspera'), mGi = $('mGiro');
+const mEs = $('mEspera'), mGi = $('mGiro');
 const video3d = $('video3d');
 const btnStart = $('btnStart');
-let estado = 'carga';       // carga | aparicion | espera | giro-si | giro-no | fin
+let estado = 'carga';       // carga | giro | espera | fin
 let listos = 0, assetsListos = false;
 
 function mostrarModelo(m) {
-  [mAp, mEs, mGi].forEach(x => x.object3D.visible = (x === m));
+  [mEs, mGi].forEach(x => x.object3D.visible = (x === m));
 }
 function reproducir(m, repetir) { mostrarModelo(m); m.components['clip-player'].reproducir(repetir); }
 
 /* ---- Carga ---- */
 function revisarCarga() {
-  if (listos >= 3) {
+  if (listos >= 2) {
     btnStart.disabled = false; btnStart.textContent = 'Tocar para comenzar';
     $('estado').textContent = 'Todo listo.';
   }
 }
-[mAp, mEs, mGi].forEach(m => m.addEventListener('clip-ready', () => { listos++; revisarCarga(); }));
+[mEs, mGi].forEach(m => m.addEventListener('clip-ready', () => { listos++; revisarCarga(); }));
 const assets = document.querySelector('a-assets');
 if (assets.hasLoaded) { assetsListos = true; } else { assets.addEventListener('loaded', () => { assetsListos = true; revisarCarga(); }); }
 revisarCarga();
 
 /* ---- Diagnóstico: avisa si falta algún archivo en el repositorio ---- */
 (function () {
-  const archivos = ['3er-anio.mp4','aparicion-saludo.glb','espera.glb','giro2.glb'];
+  const archivos = ['3er-anio.mp4','espera.glb','giro2.glb'];
   Promise.all(archivos.map(f => fetch(f, { method: 'HEAD' }).then(r => r.ok ? null : f).catch(() => f)))
     .then(res => {
       const faltan = res.filter(Boolean);
@@ -207,8 +206,8 @@ function colocarFrenteAlTelefono() {
   const pRobot = punto(ROBOT);
   const pVideo = punto(VIDEO);
 
-  // GLB (los tres modelos comparten posición y orientación)
-  [mAp, mEs, mGi].forEach(m => {
+  // GLB (los dos modelos comparten posición y orientación)
+  [mEs, mGi].forEach(m => {
     m.object3D.position.copy(pRobot);
     m.object3D.rotation.set(0, rotMirarTelefono + giro, 0);
   });
@@ -250,33 +249,21 @@ btnStart.addEventListener('click', async () => {
   vid.currentTime = 0; vid.muted = false;
   vid.play().catch(() => { vid.muted = true; vid.play().catch(()=>{}); });
 
-  estado = 'aparicion';
-  reproducir(mAp, false);
+  estado = 'giro';
+  reproducir(mGi, false);                      // arranca directamente con GIRO
 });
 
-/* ---- Secuencia de animaciones ---- */
-mAp.addEventListener('clip-done', () => {
-  if (estado !== 'aparicion') return;
-  estado = 'espera';
-  reproducir(mEs, true);                       // ESPERA en bucle, sin sacar video
-});
-
+/* ---- Secuencia de animaciones: GIRO -> ESPERA en bucle ---- */
 mGi.addEventListener('clip-done', () => {
-  if (estado === 'giro-si') {
-    estado = 'fin';
-    setTimeout(() => { window.location.href = LINK_SI; }, 300);
-  } else if (estado === 'giro-no') {
-    terminar();
-  }
+  if (estado !== 'giro') return;
+  estado = 'espera';
+  reproducir(mEs, true);
 });
 
-function terminar() {
-  estado = 'fin';
-  [mAp, mEs, mGi, video3d].forEach(x => x.object3D.visible = false);
-  const s = camVideo.srcObject; if (s) s.getTracks().forEach(t => t.stop());
-  camVideo.srcObject = null;
-  $('fin').style.display = 'flex';
-}
+/* ---- Al terminar el video: 3 segundos de espera y redirección automática ---- */
+vid.onended = () => {
+  setTimeout(() => { window.location.href = LINK_FINAL; }, ESPERA_FINAL_MS);
+};
 
 // Si el usuario vuelve atrás desde el Google Doc, se reinicia limpio
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
