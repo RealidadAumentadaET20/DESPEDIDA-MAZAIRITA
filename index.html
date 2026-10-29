@@ -42,7 +42,6 @@
          cursor="rayOrigin:mouse" raycaster="objects:.clickable; far:5">
 
   <a-assets timeout="120000">
-    <a-asset-item id="glbAparicion" src="aparicion-saludo.glb"></a-asset-item>
     <a-asset-item id="glbEspera"    src="espera.glb"></a-asset-item>
     <a-asset-item id="glbGiro"      src="MAZAIRITA-VERSION-FINAL-GIRO-UNIFICADO.glb"></a-asset-item>
   </a-assets>
@@ -148,7 +147,7 @@ document.getElementById('cam3d').setAttribute('gyro', '');
 const $ = id => document.getElementById(id);
 const camVideo = $('cam'), vid = $('vid'), cam3d = $('cam3d');
 const mAp = $('mAparicion'), mEs = $('mEspera'), mGi = $('mGiro');
-const botones = $('botones'), btnSi = $('btnSi'), btnNo = $('btnNo'), video3d = $('video3d');
+const video3d = $('video3d');
 const btnStart = $('btnStart');
 let estado = 'carga';       // carga | aparicion | espera | giro-si | giro-no | fin
 let listos = 0, assetsListos = false;
