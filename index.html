@@ -22,7 +22,7 @@
 <body>
 <video id="cam" playsinline muted autoplay></video>
 <!-- El video va fuera de <a-assets> para que iOS no se quede esperando su precarga -->
-<video id="vid" src="3er-anio.mp4" preload="auto" playsinline webkit-playsinline style="display:none"></video>
+<video id="vid" src="DESPEDIDA.mp4" preload="auto" playsinline webkit-playsinline style="display:none"></video>
 
 <div id="inicio" class="overlay">
   <h1>Mazairita · 3er año</h1>
@@ -33,7 +33,7 @@
 
 <div id="fin" class="overlay">
   <h1>¡Gracias por visitarnos!</h1>
-  <p>Terminó la experiencia de 3er año.</p>
+  <p>¡Hasta la próxima!.</p>
   <button onclick="location.reload()">Volver a empezar</button>
 </div>
 
@@ -44,9 +44,7 @@
   <a-assets timeout="120000">
     <a-asset-item id="glbAparicion" src="aparicion-saludo.glb"></a-asset-item>
     <a-asset-item id="glbEspera"    src="espera.glb"></a-asset-item>
-    <a-asset-item id="glbGiro"      src="giro2.glb"></a-asset-item>
-    <img id="imgSi" src="boton-si.png">
-    <img id="imgNo" src="boton-no.png">
+    <a-asset-item id="glbGiro"      src="MAZAIRITA-VERSION-FINAL-GIRO-UNIFICADO.glb"></a-asset-item>
   </a-assets>
 
   <a-entity light="type:ambient; intensity:1.1"></a-entity>
@@ -61,12 +59,7 @@
   <a-entity id="mAparicion" visible="false" gltf-model="#glbAparicion" clip-player></a-entity>
   <a-entity id="mEspera"    visible="false" gltf-model="#glbEspera"    clip-player></a-entity>
   <a-entity id="mGiro"      visible="false" gltf-model="#glbGiro"      clip-player></a-entity>
-
-  <a-entity id="botones" visible="false">
-    <a-text value="¿Queres mas informacion?" align="center" width="3.5" color="#FFFFFF" position="0 0.15 0"></a-text>
-    <a-image id="btnSi" class="clickable" src="#imgSi" width="0.4" height="0.38" position="-0.3 -0.2 0"></a-image>
-    <a-image id="btnNo" class="clickable" src="#imgNo" width="0.4" height="0.38" position="0.3 -0.2 0"></a-image>
-  </a-entity>
+  
 </a-scene>
 
 <script>
